@@ -20,7 +20,7 @@ public class OrderController {
 
     @PostMapping("/create")
     public ResponseEntity<?> create(@RequestBody List<OrderCreateDTO> orderCreateDTOList, @RequestHeader("X-User-Email") String email) {
-        Long id = orderService.save(orderCreateDTOList, email);
+        Long id = orderService.createFeignKafka(orderCreateDTOList, email);
         return new ResponseEntity<>(CommonDTO.builder()
                 .result(id)
                 .status_code(HttpStatus.CREATED.value())

@@ -44,7 +44,8 @@ public class ProductController {
 
     // 상품 상세 정보 조회
     @GetMapping("/detail/{id}")
-    public ResponseEntity<?> findById(@PathVariable Long id) {
+    public ResponseEntity<?> findById(@PathVariable Long id) throws InterruptedException {
+        Thread.sleep(3000L);
         return new ResponseEntity<>(CommonDTO.builder()
                 .result(productService.findById(id))
                 .status_code(HttpStatus.OK.value())

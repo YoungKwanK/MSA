@@ -38,6 +38,15 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+
+	//    msa간에 통신을 위한 openfeign의존성 추가
+	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+	//    재고감소 비동기처리를 위한 kafka관련 의존성추가
+	implementation 'org.springframework.kafka:spring-kafka'
+
+	//    circuit 브레이커 도입시
+	implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
 }
 
 dependencyManagement{
