@@ -1,9 +1,9 @@
-package com.beyond.order.common.controller;
+package com.beyond.ordering.common.controller;
 
-import com.beyond.order.common.service.SseEmitterRegistry;
+import com.beyond.ordering.common.service.SseEmitterRegistry;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -17,12 +17,9 @@ public class SseController {
 
     private final SseEmitterRegistry sseEmitterRegistry;
 
-    // SseEmitter 객체를 return 에서 연결이 끊기지 않고 계속 알림을 보낼 수 있도록 함
     @GetMapping("/connect")
-    public SseEmitter subscribe() {
-        // sseEmitter 에 연결 요청이 들어온 사용자의 정보가 자동으로 세팅되어 있음
-        SseEmitter sseEmitter = new SseEmitter(14400 * 60 * 1000L);           // 10일 정도 emitter 유효 기간 설정
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    public SseEmitter subscribe(@RequestHeader("X-User-Email") String email) {
+        SseEmitter sseEmitter = new SseEmitter(14400 * 60 * 1000L);
         sseEmitterRegistry.addSseEmitter(email, sseEmitter);
         try {
             sseEmitter.send(SseEmitter.event().name("connect").data("연결 완료"));
@@ -32,11 +29,8 @@ public class SseController {
         return sseEmitter;
     }
 
-
     @GetMapping("/disconnect")
-    public void unSubscribe() {
-        // key 를 매개변수로 넘겨 삭제
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    public void unSubscribe(@RequestHeader("X-User-Email") String email) {
         sseEmitterRegistry.removeEmitter(email);
     }
 }

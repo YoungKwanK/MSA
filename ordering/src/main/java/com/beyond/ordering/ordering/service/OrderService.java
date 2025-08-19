@@ -1,23 +1,20 @@
-package com.beyond.order.ordering.service;
+package com.beyond.ordering.ordering.service;
 
-import com.beyond.order.common.service.SseAlarmService;
-import com.beyond.order.member.domain.Member;
-import com.beyond.order.member.repository.MemberRepository;
-import com.beyond.order.ordering.domain.OrderDetail;
-import com.beyond.order.ordering.domain.Ordering;
-import com.beyond.order.ordering.dto.OrderCreateDTO;
-import com.beyond.order.ordering.dto.OrderDetailResDTO;
-import com.beyond.order.ordering.dto.OrderListResDTO;
-import com.beyond.order.ordering.repository.OrderRepository;
-import com.beyond.order.product.domain.Product;
-import com.beyond.order.product.repository.ProductRepository;
-import jakarta.persistence.EntityNotFoundException;
+import com.beyond.ordering.common.dto.CommonDTO;
+import com.beyond.ordering.common.service.SseAlarmService;
+import com.beyond.ordering.ordering.domain.OrderDetail;
+import com.beyond.ordering.ordering.domain.Ordering;
+import com.beyond.ordering.ordering.dto.OrderCreateDTO;
+import com.beyond.ordering.ordering.dto.OrderListResDTO;
+import com.beyond.ordering.ordering.dto.ProductDTO;
+import com.beyond.ordering.ordering.repository.OrderRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,100 +24,106 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final MemberRepository memberRepository;
-    private final ProductRepository productRepository;
     private final SseAlarmService sseAlarmService;
+    private final RestTemplate restTemplate;
 
     // 주문 생성
-    public Long save(List<OrderCreateDTO> orderCreateDTOList) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Member member = memberRepository.findByEmail(email).orElseThrow(() -> new EntityNotFoundException("로그인 후 이용 가능"));
+    public Long save(List<OrderCreateDTO> orderCreateDTOList, String email) {
 
-        Ordering ordering = Ordering.builder().member(member).build();
+        Ordering ordering = Ordering.builder()
+                .memberEmail(email)
+                .build();
 
         for (OrderCreateDTO orderCreateDTO : orderCreateDTOList) {
-            Product product = productRepository.findById(orderCreateDTO.getProductId())
-                    .orElseThrow(() -> new EntityNotFoundException("product is not found"));
+//            상품 조회
+            String productDetailUrl = "http://product-service/product/detail/" + orderCreateDTO.getProductId();
+            HttpHeaders headers = new HttpHeaders();
+//            HttpEntity : httpbody와 httpheader를 세팅하기 위한 객체
+            HttpEntity<String> httpEntity = new HttpEntity<>(headers);
+            ResponseEntity<CommonDTO> response = restTemplate.exchange(productDetailUrl, HttpMethod.GET, httpEntity, CommonDTO.class);
+            CommonDTO commonDTO = response.getBody();
+            ObjectMapper objectMapper = new ObjectMapper();
+//            readValue : String -> Class 변환, convertValue : Object -> Class 변환
+            ProductDTO product = objectMapper.convertValue(commonDTO.getResult(), ProductDTO.class);
 
+//            재고 조회
             if (product.getStockQuantity() < orderCreateDTO.getProductCount()) {
                 throw new IllegalArgumentException("재고가 부족합니다.");
             }
 
-            product.updateStockQuantity(orderCreateDTO.getProductCount());
-
+//            주문 발생
             OrderDetail orderDetail = OrderDetail.builder()
-                    .product(product)
+                    .productId(product.getId())
+                    .productName(product.getName())
                     .quantity(orderCreateDTO.getProductCount())
                     .ordering(ordering)
                     .build();
 
             ordering.getOrderDetailList().add(orderDetail);
+
+//            동기적 재고감소 요청
+            String productUpdateStockUrl = "http://product-service/product/updatestock";
+            HttpHeaders stockHeaders = new HttpHeaders();
+            stockHeaders.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<OrderCreateDTO> updateStockEntity = new HttpEntity<>(orderCreateDTO,stockHeaders);
+            restTemplate.exchange(productUpdateStockUrl, HttpMethod.PUT, updateStockEntity, Void.class);
         }
 
-        // 주문 성공 시 admin 유저에게 알림 메세지 전송
+//         주문 성공 시 admin 유저에게 알림 메세지 전송
         sseAlarmService.publishMessage("admin@email.com", email, ordering.getId());
-        
+
         // db 저장
         orderRepository.save(ordering);
 
         return ordering.getId();
     }
-    
+
+    // 주문 생성
+    public Long createFeignKafka(List<OrderCreateDTO> orderCreateDTOList, String email) {
+
+        Ordering ordering = Ordering.builder()
+                .memberEmail(email)
+                .build();
+
+        for (OrderCreateDTO orderCreateDTO : orderCreateDTOList) {
+//            feign 클라이언트를 사용한 동기적 상품 조회
+           
+//            재고 조회
+            if (product.getStockQuantity() < orderCreateDTO.getProductCount()) {
+                throw new IllegalArgumentException("재고가 부족합니다.");
+            }
+
+//            주문 발생
+            OrderDetail orderDetail = OrderDetail.builder()
+                    .productId(product.getId())
+                    .productName(product.getName())
+                    .quantity(orderCreateDTO.getProductCount())
+                    .ordering(ordering)
+                    .build();
+
+            ordering.getOrderDetailList().add(orderDetail);
+
+//            kafka를 활용한 비동기적 재고감소 요청
+
+        }
+
+//         주문 성공 시 admin 유저에게 알림 메세지 전송
+        sseAlarmService.publishMessage("admin@email.com", email, ordering.getId());
+        // db 저장
+        orderRepository.save(ordering);
+
+        return ordering.getId();
+    }
+
     // 주문 목록 조회
     public List<OrderListResDTO> findAll() {
-        List<Ordering> orderList = orderRepository.findAll();
-        List<OrderListResDTO> orderListResDTOList = new ArrayList<>();
-        for (Ordering ordering : orderList) {
-            List<OrderDetailResDTO> orderDetailResDTOList = ordering.getOrderDetailList().stream()
-                    .map(OrderDetailResDTO::fromEntity).collect(Collectors.toList());
-
-            OrderListResDTO orderListResDTO = OrderListResDTO.builder()
-                        .id(ordering.getId())
-                        .orderStatus(ordering.getOrderStatus())
-                        .orderDetailResDTOList(orderDetailResDTOList)
-                        .memberEmail(ordering.getMember().getEmail()).build();
-
-            orderListResDTOList.add(orderListResDTO);
-        }
-        return orderListResDTOList;
+        return orderRepository.findAll().stream()
+                .map(OrderListResDTO::fromEntity).collect(Collectors.toList());
     }
-    
+
     // 나의 주문 목록 조회
-    public List<OrderListResDTO> findAllByMemberId() {
-        Member member = memberRepository.findByEmail(SecurityContextHolder.getContext().getAuthentication().getName()).orElseThrow();
-        Long id = memberRepository.findByEmail(SecurityContextHolder.getContext().getAuthentication().getName())
-                .orElseThrow(() -> new EntityNotFoundException("member is not found")).getId();
-        List<Ordering> orderList = orderRepository.findAllByMemberId(id);
-        List<OrderListResDTO> orderListResDTOList = new ArrayList<>();
-        for (Ordering ordering : orderList) {
-            List<OrderDetailResDTO> orderDetailResDTOList = ordering.getOrderDetailList().stream()
-                    .map(OrderDetailResDTO::fromEntity).collect(Collectors.toList());
-
-            OrderListResDTO orderListResDTO = OrderListResDTO.builder()
-                    .id(ordering.getId())
-                    .orderStatus(ordering.getOrderStatus())
-                    .orderDetailResDTOList(orderDetailResDTOList)
-                    .memberEmail(ordering.getMember().getEmail()).build();
-
-            orderListResDTOList.add(orderListResDTO);
-        }
-        return orderListResDTOList;
-    }
-    
-    
-    // 주문 취소
-    public Ordering cancel(Long id) {
-        // Ordering의 DB 상태값 변경 (ORDERED -> CANCELED)
-        Ordering ordering = orderRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("product is not found"));
-        ordering.cancelStatus();
-        
-
-        for (OrderDetail orderDetail : ordering.getOrderDetailList()) {
-
-            // rdb에 재고 업데이트
-            orderDetail.getProduct().cancelOrder(orderDetail.getQuantity());
-        }
-
-        return ordering;
+    public List<OrderListResDTO> myOrders(String email) {
+        return  orderRepository.findAllByMemberEmail(email).stream()
+                .map(OrderListResDTO::fromEntity).collect(Collectors.toList());
     }
 }

@@ -1,4 +1,4 @@
-package com.beyond.ordering.common.dto;
+package com.beyond.product.common.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class CommonErrorDTO {
+public class CommonDTO {
+    private Object result;
     private int status_code;
     private String status_message;
 }

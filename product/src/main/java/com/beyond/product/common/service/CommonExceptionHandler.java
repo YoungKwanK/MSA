@@ -1,6 +1,6 @@
-package com.beyond.ordering.common.service;
+package com.beyond.product.common.service;
 
-import com.beyond.ordering.common.dto.CommonErrorDTO;
+import com.beyond.product.common.dto.CommonErrorDTO;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 public class CommonExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
+    // 상황에 따라 다른 에러가 파라미터로 주입됨
     public ResponseEntity<?> illegalException(IllegalArgumentException e) {
         log.error(e.getMessage());
         e.printStackTrace();

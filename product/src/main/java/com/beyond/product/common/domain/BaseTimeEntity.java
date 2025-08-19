@@ -1,4 +1,4 @@
-package com.beyond.ordering.common.domain;
+package com.beyond.product.common.domain;
 
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;

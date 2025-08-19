@@ -1,6 +1,6 @@
-package com.beyond.order.ordering.dto;
+package com.beyond.ordering.ordering.dto;
 
-import com.beyond.order.ordering.domain.OrderDetail;
+import com.beyond.ordering.ordering.domain.OrderDetail;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,7 +18,7 @@ public class OrderDetailResDTO {
     public static OrderDetailResDTO fromEntity(OrderDetail orderDetail) {
         return OrderDetailResDTO.builder()
                 .id(orderDetail.getId())
-                .productName(orderDetail.getProduct().getName())
+                .productName(orderDetail.getProductName())
                 .productCount(orderDetail.getQuantity()).build();
     }
 }

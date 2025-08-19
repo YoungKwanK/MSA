@@ -1,7 +1,6 @@
-package com.beyond.order.ordering.domain;
+package com.beyond.ordering.ordering.domain;
 
-import com.beyond.order.common.domain.BaseTimeEntity;
-import com.beyond.order.member.domain.Member;
+import com.beyond.ordering.common.domain.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -23,9 +22,8 @@ public class Ordering extends BaseTimeEntity {
     @Builder.Default
     private OrderStatus orderStatus = OrderStatus.ORDERED;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id")
-    private Member member;
+    @Column(nullable = false)
+    private String memberEmail;
 
     @Builder.Default
     @OneToMany(mappedBy = "ordering", fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)

@@ -1,4 +1,4 @@
-package com.beyond.order.ordering.domain;
+package com.beyond.ordering.ordering.domain;
 
 
 public enum OrderStatus {

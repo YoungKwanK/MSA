@@ -1,8 +1,8 @@
-package com.beyond.order.ordering.dto;
+package com.beyond.ordering.ordering.dto;
 
-import com.beyond.order.ordering.domain.OrderDetail;
-import com.beyond.order.ordering.domain.OrderStatus;
-import com.beyond.order.ordering.domain.Ordering;
+import com.beyond.ordering.ordering.domain.OrderDetail;
+import com.beyond.ordering.ordering.domain.OrderStatus;
+import com.beyond.ordering.ordering.domain.Ordering;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,7 +28,7 @@ public class OrderListResDTO {
         }
         OrderListResDTO orderListResDTO = OrderListResDTO.builder()
                 .id(ordering.getId())
-                .memberEmail(ordering.getMember().getEmail())
+                .memberEmail(ordering.getMemberEmail())
                 .orderStatus(ordering.getOrderStatus())
                 .orderDetailResDTOList(orderDetailResDTOList)
                 .build();
